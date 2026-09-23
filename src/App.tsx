@@ -607,7 +607,10 @@ export default function App() {
             {/* ALG/TMC Approval Tab View - direct and distraction-free */}
             {activeTab === "algtmc" && (
               <div className="space-y-4">
-                <AlgTmcApprovalPanel />
+                <AlgTmcApprovalPanel
+                  branding={branding}
+                  onUpdateBranding={updateBranding}
+                />
               </div>
             )}
         </main>
