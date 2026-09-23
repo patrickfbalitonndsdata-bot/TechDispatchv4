@@ -2887,6 +2887,37 @@ export const RADAR_STUDY_NOTE =
 NOTE: Use attached Radar Template`;
 
 /**
+ * Checks if a note string represents the TMC Install note
+ */
+export function isTmcNote(text: string): boolean {
+  if (!text) return false;
+  return /proposed camera placement|polygon,\s*including driveways|backup cameras,?\s*it is best/i.test(text);
+}
+
+/**
+ * Checks if a note string represents the ALG SPEED Install note
+ */
+export function isSpeedInstallNote(text: string): boolean {
+  if (!text) return false;
+  return /For SPEED locations.*ensure that poles are extended/i.test(text);
+}
+
+/**
+ * Checks if a note string represents the ALG SPEED Teardown note
+ */
+export function isSpeedTeardownNote(text: string): boolean {
+  if (!text) return false;
+  return /See correct Format|For SPEED locations.*file naming|ALG 25-99999 SPEED/i.test(text);
+}
+
+/**
+ * Checks if a note string represents the Automatic Notes that use full yellow highlight (TMC and ALG speed install)
+ */
+export function isAutomaticSpeedOrTmcNote(text: string): boolean {
+  return isTmcNote(text) || isSpeedInstallNote(text);
+}
+
+/**
  * Checks if a note string represents the Radar Study instructional preset
  */
 export function isRadarStudyNote(text: string): boolean {
@@ -3191,10 +3222,13 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Renders an additional note in Outlook HTML with proper green (#00FF00) and yellow (#FFFF00) highlights.
- * For SPEED Teardown notes:
- * - Part 1 (instructions) is highlighted in Green (#00FF00), bold, italic
- * - Part 2 ("See correct Format: <ALG>SPACE<Project Number>SPACE<SPEED> | Example: “ALG 25-99999 SPEED”.") is highlighted in Yellow (#FFFF00), bold, italic
+ * Renders an additional note in Outlook HTML with proper yellow (#FFFF00) or green (#00FF00) highlights.
+ * - TMC and ALG speed install are highlighted in Yellow (#FFFF00), bold, italic
+ * - ALG SPEED Teardown note:
+ *   - Part 1 (instructions) is highlighted in Green (#00FF00), bold, italic
+ *   - Part 2 ("See correct Format: <ALG>SPACE<Project Number>SPACE<SPEED> | Example: “ALG 25-99999 SPEED”.") is highlighted in Yellow (#FFFF00), bold, italic
+ * - Radar Study note uses its specific green/yellow instructional format
+ * - Other manual notes use Green (#00FF00), bold, italic
  */
 export function renderNDSNoteHtml(noteText: string): string {
   const formatted = formatNoteTextWithPrefix(noteText);
@@ -3205,6 +3239,7 @@ export function renderNDSNoteHtml(noteText: string): string {
   }
 
   // Check if this note contains "See correct Format:" or "Example:" (SPEED Teardown note)
+  // Reverted format: Part 1 in Green (#00FF00), Part 2 in Yellow (#FFFF00)
   if (/See correct Format\s*:/i.test(formatted)) {
     const splitIndex = formatted.search(/See correct Format\s*:/i);
     const part1 = formatted.substring(0, splitIndex).trim();
@@ -3216,6 +3251,10 @@ export function renderNDSNoteHtml(noteText: string): string {
     </div>`;
   }
 
+  // Determine if this is an Automatic Note (TMC, ALG speed install)
+  const isAutoNote = isAutomaticSpeedOrTmcNote(formatted) || isAutomaticSpeedOrTmcNote(noteText);
+  const noteHighlightColor = isAutoNote ? "#FFFF00" : "#00FF00";
+
   // Handle multiline notes (e.g. TMC install note with newline)
   const lines = formatted.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length > 1) {
@@ -3223,7 +3262,7 @@ export function renderNDSNoteHtml(noteText: string): string {
       .map(
         (line) => `
     <div style="margin: 4px 0 4px 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 12pt; mso-ansi-font-size: 12.0pt; mso-bidi-font-size: 12.0pt; line-height: 1.4;">
-      <span style="background-color: #00FF00; mso-highlight: #00FF00; color: #000000; font-weight: bold; font-style: italic; display: inline-block; padding: 1px 4px;">${escapeHtml(line.trim())}</span>
+      <span style="background-color: ${noteHighlightColor}; mso-highlight: ${noteHighlightColor}; color: #000000; font-weight: bold; font-style: italic; display: inline-block; padding: 1px 4px;">${escapeHtml(line.trim())}</span>
     </div>`
       )
       .join("");
@@ -3231,7 +3270,7 @@ export function renderNDSNoteHtml(noteText: string): string {
 
   return `
   <div style="margin: 4px 0 6px 0; font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 12pt; mso-ansi-font-size: 12.0pt; mso-bidi-font-size: 12.0pt; line-height: 1.4;">
-    <span style="background-color: #00FF00; mso-highlight: #00FF00; color: #000000; font-weight: bold; font-style: italic; display: inline-block; padding: 1px 4px;">${escapeHtml(formatted)}</span>
+    <span style="background-color: ${noteHighlightColor}; mso-highlight: ${noteHighlightColor}; color: #000000; font-weight: bold; font-style: italic; display: inline-block; padding: 1px 4px;">${escapeHtml(formatted)}</span>
   </div>`;
 }
 
