@@ -13,6 +13,7 @@ import {
   Cpu,
   Layers,
   Sparkles,
+  FileText,
 } from "lucide-react";
 import dispatchSealImg from "../assets/images/dispatch_seal_1790100099915.jpg";
 
@@ -20,6 +21,7 @@ interface FooterProps {
   onGoToDashboard: () => void;
   onGoToGenerator: () => void;
   onGoToHistory: () => void;
+  onGoToAlgTmc?: () => void;
   onOpenSettings: () => void;
   onOpenAuditLogs: () => void;
   savedEmailsCount?: number;
@@ -31,6 +33,7 @@ export const Footer: React.FC<FooterProps> = ({
   onGoToDashboard,
   onGoToGenerator,
   onGoToHistory,
+  onGoToAlgTmc,
   onOpenSettings,
   onOpenAuditLogs,
   savedEmailsCount = 0,
@@ -139,6 +142,21 @@ export const Footer: React.FC<FooterProps> = ({
                   </span>
                 </button>
               </li>
+              {onGoToAlgTmc && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={onGoToAlgTmc}
+                    className="group text-[#EDF3E3]/80 hover:text-white transition-all duration-200 flex items-center space-x-1.5 cursor-pointer text-left bg-transparent border-0 p-0 transform hover:translate-x-1"
+                  >
+                    <FileText className="w-3 h-3 text-[#8AA66B] group-hover:scale-110 transition-transform" />
+                    <span className="relative">
+                      ALG/TMC Approval Scanner
+                      <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-[#CFE0B8] transition-all duration-300 group-hover:w-full" />
+                    </span>
+                  </button>
+                </li>
+              )}
               <li>
                 <button
                   type="button"
