@@ -48,9 +48,9 @@ export const DashboardLanding: React.FC<DashboardLandingProps> = ({
   currentFileName,
 }) => {
   return (
-    <div className="space-y-12 pb-16">
-      {/* 1. IMMERSIVE HERO BACKGROUND INTEGRATION (Full-bleed with downward gradient fade into body) */}
-      <div className="relative -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-8 overflow-hidden">
+    <div className="w-full">
+      {/* 1. IMMERSIVE HERO BACKGROUND INTEGRATION (Full-width edge-to-edge across entire browser window) */}
+      <div className="relative w-full overflow-hidden bg-black/95">
         {/* Background Image with Deep Natural Gradient Overlay fading into page canvas */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <img
@@ -64,8 +64,8 @@ export const DashboardLanding: React.FC<DashboardLandingProps> = ({
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent via-55% to-[#FBF7F0]" />
         </div>
 
-        {/* Hero Content - Directly integrated on the background without container card */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 lg:pt-20 pb-20 sm:pb-28 lg:pb-32 text-white space-y-6">
+        {/* Hero Content - Directly integrated on the background, balanced within max-w-7xl container */}
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 lg:pt-20 pb-20 sm:pb-28 lg:pb-36 text-white space-y-6">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative inline-flex items-center space-x-2.5 px-3.5 py-1.5 rounded-full bg-black/40 border border-[#CFE0B8]/40 text-[#EDF3E3] text-xs font-semibold backdrop-blur-sm shadow-xs">
               <img
@@ -149,6 +149,9 @@ export const DashboardLanding: React.FC<DashboardLandingProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Main Body Content - Contained in max-w-7xl centered container */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 pb-16 pt-6">
 
       {/* 2. CORE SYSTEM HIGHLIGHTS / PILLARS (Modern circular badges like INTENSE reference) */}
       <section className="space-y-6">
@@ -473,6 +476,7 @@ export const DashboardLanding: React.FC<DashboardLandingProps> = ({
           </button>
         </div>
       </section>
+      </div>
     </div>
   );
 };
