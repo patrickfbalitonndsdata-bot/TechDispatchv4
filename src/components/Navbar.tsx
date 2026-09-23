@@ -7,6 +7,7 @@ import {
   ChevronDown,
   LayoutDashboard,
   FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { SAMPLE_DATASETS, SampleDataset } from "../utils/sampleData";
 import dispatchSealImg from "../assets/images/dispatch_seal_1790100099915.jpg";
@@ -18,8 +19,8 @@ interface NavbarProps {
   activeDatasetName?: string;
   totalOrdersCount: number;
   techniciansCount: number;
-  activeTab: "dashboard" | "generator" | "history";
-  onSelectTab: (tab: "dashboard" | "generator" | "history") => void;
+  activeTab: "dashboard" | "generator" | "history" | "algtmc";
+  onSelectTab: (tab: "dashboard" | "generator" | "history" | "algtmc") => void;
   savedEmailsCount: number;
 }
 
@@ -147,6 +148,28 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               />
             </button>
+
+            {/* ALG/TMC Approval */}
+            <button
+              type="button"
+              onClick={() => onSelectTab("algtmc")}
+              className={`group relative flex items-center space-x-1.5 px-3.5 py-2 text-xs font-bold transition-all duration-300 cursor-pointer bg-transparent hover:-translate-y-0.5 ${
+                activeTab === "algtmc"
+                  ? "text-[#CFE0B8]"
+                  : "text-[#EDF3E3]/70 hover:text-white"
+              }`}
+            >
+              <FileText className={`w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110 ${activeTab === "algtmc" ? "text-[#CFE0B8]" : "text-[#EDF3E3]/60 group-hover:text-[#CFE0B8]"}`} />
+              <span>ALG/TMC Approval</span>
+              {/* Animated Underline Indicator */}
+              <span
+                className={`absolute bottom-0 left-2 right-2 h-[2px] rounded-full transition-all duration-300 ${
+                  activeTab === "algtmc"
+                    ? "bg-[#CFE0B8] scale-x-100 opacity-100 shadow-[0_0_8px_rgba(207,224,184,0.8)]"
+                    : "bg-[#8AA66B] scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100"
+                }`}
+              />
+            </button>
           </nav>
 
           {/* Right Action Tools - Transparent Label Buttons with Hover Animation */}
@@ -241,8 +264,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>History ({savedEmailsCount})</span>
+            <span>History</span>
             <span className={`absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-[#CFE0B8] transition-transform duration-200 ${activeTab === "history" ? "scale-x-100" : "scale-x-0"}`} />
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectTab("algtmc")}
+            className={`group relative flex items-center space-x-1 py-1.5 px-3 rounded-lg font-bold bg-transparent transition-all duration-200 ${
+              activeTab === "algtmc" ? "text-[#CFE0B8]" : "text-[#EDF3E3]/70 hover:text-white"
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>ALG/TMC</span>
+            <span className={`absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-[#CFE0B8] transition-transform duration-200 ${activeTab === "algtmc" ? "scale-x-100" : "scale-x-0"}`} />
           </button>
         </div>
       </div>
