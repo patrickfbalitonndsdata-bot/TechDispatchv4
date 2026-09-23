@@ -43,7 +43,7 @@ export default function App() {
   const [customMapping, setCustomMapping] = useState<ColumnMapping | null>(null);
 
   // 2. Selection & View Tab State (default to landing dashboard)
-  const [activeTab, setActiveTab] = useState<"dashboard" | "generator" | "history">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "generator" | "history" | "algtmc">("dashboard");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTechName, setSelectedTechName] = useState<string>("");
   const [savedEmailsCount, setSavedEmailsCount] = useState<number>(0);
@@ -51,7 +51,6 @@ export default function App() {
   // 3. Settings & Styling State
   const [branding, setBranding] = useState<TemplateBranding>(DEFAULT_BRANDING);
   const [currentStyle, setCurrentStyle] = useState<TemplateStyle>("exact_nds_template");
-  const [algTmcApprovalEnabled, setAlgTmcApprovalEnabled] = useState<boolean>(false);
 
   // 4. Modals State
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false);
@@ -356,79 +355,9 @@ export default function App() {
           />
         ) : (
           <>
-            {/* CSV Dropzone / Upload Bar */}
-            <CsvUploadZone
-              onFileUpload={handleFileUpload}
-              onLoadSample={loadSampleDataset}
-              parseResult={parseResult}
-              currentFileName={currentFileName}
-              onOpenMappingModal={() => setIsMappingModalOpen(true)}
-              onClearFile={handleClearAll}
-            />
-
-            {/* ALG/TMC Approval Toggle Switch & Subpanel */}
-            <div className="bg-[#FBF7F0] border border-[#CFE0B8] rounded-2xl p-4 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center space-x-3">
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition shadow-2xs ${
-                      algTmcApprovalEnabled
-                        ? "bg-[#8AA66B] text-white"
-                        : "bg-[#EDF3E3] text-[#3F4A33]"
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs sm:text-sm font-bold text-[#3F4A33]">
-                        ALG/TMC Approval
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition ${
-                          algTmcApprovalEnabled
-                            ? "bg-[#8AA66B]/20 text-[#3F4A33] border-[#8AA66B]"
-                            : "bg-[#EDF3E3] text-[#3F4A33]/70 border-[#CFE0B8]"
-                        }`}
-                      >
-                        {algTmcApprovalEnabled ? "Enabled" : "Optional PDF Scanner"}
-                      </span>
-                    </div>
-                    <p className="text-[11px] sm:text-xs text-[#3F4A33]/70 mt-0.5">
-                      Scan up to 2 project PDF approvals (Page 1) to auto-generate Nina/Marisa approval emails.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Modern Toggle Switch */}
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={algTmcApprovalEnabled}
-                  onClick={() => setAlgTmcApprovalEnabled(!algTmcApprovalEnabled)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden focus:ring-2 focus:ring-[#8AA66B] focus:ring-offset-2 ${
-                    algTmcApprovalEnabled ? "bg-[#8AA66B]" : "bg-[#CFE0B8]"
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                      algTmcApprovalEnabled ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Conditional PDF Upload & Email Preview Component */}
-              {algTmcApprovalEnabled && (
-                <div className="mt-4 pt-4 border-t border-[#CFE0B8]">
-                  <AlgTmcApprovalPanel />
-                </div>
-              )}
-            </div>
-
-            {/* View Mode Navigation Tabs: Generator vs Saved History */}
+            {/* View Mode Navigation Tabs: Generator vs Saved History vs ALG/TMC Approval */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#CFE0B8] pb-1 gap-3">
-              <div className="flex items-center space-x-2 -mb-px">
+              <div className="flex items-center space-x-2 -mb-px flex-wrap gap-y-2">
                 {/* Tab 1: Email Generator */}
                 <button
                   type="button"
@@ -469,9 +398,26 @@ export default function App() {
                     </span>
                   )}
                 </button>
+
+                {/* Tab 3: ALG/TMC Approval */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("algtmc")}
+                  className={`flex items-center space-x-2 py-2.5 px-4 text-xs font-bold border-b-2 transition cursor-pointer ${
+                    activeTab === "algtmc"
+                      ? "border-[#8AA66B] text-[#3F4A33] bg-white rounded-t-xl shadow-2xs"
+                      : "border-transparent text-[#3F4A33]/70 hover:text-[#3F4A33] hover:border-[#CFE0B8]"
+                  }`}
+                >
+                  <FileText className="w-4 h-4 text-[#8AA66B]" />
+                  <span>ALG/TMC Approval</span>
+                  <span className="bg-[#8AA66B]/20 text-[#3F4A33] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#8AA66B]/40">
+                    PDF Scanner
+                  </span>
+                </button>
               </div>
 
-              {/* Quick Selectors (Technician & Work Week when multiple scanned) */}
+              {/* Quick Selectors (Technician & Work Week when multiple scanned) - Generator only */}
               {activeTab === "generator" && (
                 <div className="hidden sm:flex items-center space-x-3 text-xs pb-1">
                   {parseResult?.detectedWorkWeeks && parseResult.detectedWorkWeeks.length > 1 && (
@@ -519,8 +465,18 @@ export default function App() {
             </div>
 
             {/* Tab Content Display */}
-            {activeTab === "generator" ? (
+            {activeTab === "generator" && (
               <>
+                {/* CSV Ingestion Dropzone - exclusively visible on Generator tab */}
+                <CsvUploadZone
+                  onFileUpload={handleFileUpload}
+                  onLoadSample={loadSampleDataset}
+                  parseResult={parseResult}
+                  currentFileName={currentFileName}
+                  onOpenMappingModal={() => setIsMappingModalOpen(true)}
+                  onClearFile={handleClearAll}
+                />
+
                 {/* Mobile Selectors */}
                 {((parseResult?.detectedWorkWeeks && parseResult.detectedWorkWeeks.length > 1) || rosters.length > 0) && (
                   <div className="flex sm:hidden flex-col gap-2 bg-[#EDF3E3] border border-[#CFE0B8] rounded-xl p-3 text-xs">
@@ -637,13 +593,22 @@ export default function App() {
                   </div>
                 )}
               </>
-            ) : (
-              /* Saved History Tab View */
+            )}
+
+            {/* Saved History Tab View - direct and distraction-free */}
+            {activeTab === "history" && (
               <SavedEmailsHistoryTab
                 activeTechName={activeRoster?.technicianName}
                 onSelectTechInGenerator={handleSelectTechFromHistory}
                 onLoadSavedEmailIntoGenerator={handleLoadSavedEmailIntoGenerator}
               />
+            )}
+
+            {/* ALG/TMC Approval Tab View - direct and distraction-free */}
+            {activeTab === "algtmc" && (
+              <div className="space-y-4">
+                <AlgTmcApprovalPanel />
+              </div>
             )}
           </>
         )}
@@ -657,6 +622,7 @@ export default function App() {
           refreshSavedCount();
           setActiveTab("history");
         }}
+        onGoToAlgTmc={() => setActiveTab("algtmc")}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onOpenAuditLogs={() => setIsHistoryModalOpen(true)}
         savedEmailsCount={savedEmailsCount}
