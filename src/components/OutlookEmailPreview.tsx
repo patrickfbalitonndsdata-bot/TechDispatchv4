@@ -82,6 +82,7 @@ import {
   MAINLINE_STUDY_NOTE,
   RADAR_STUDY_NOTE,
   isRadarStudyNote,
+  isAutomaticSpeedOrTmcNote,
 } from "../utils/outlookTemplateGenerator";
 import {
   GeneratedEmailRecord,
@@ -1769,7 +1770,7 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                 Additional Notes Configuration
               </span>
               <span className="text-[11px] text-emerald-800 hidden md:inline font-medium">
-                (Notes render between Day heading & task lines with <span className="bg-[#00FF00] text-black font-bold italic px-1.5 py-0.5 rounded shadow-2xs">bright green highlight and black bold italic text</span>)
+                (Notes render between Day heading & task lines with <span className="bg-[#FFFF00] text-black font-bold italic px-1.5 py-0.5 rounded shadow-2xs">yellow (TMC, SPEED)</span> or <span className="bg-[#00FF00] text-black font-bold italic px-1.5 py-0.5 rounded shadow-2xs">green</span> highlight)
               </span>
             </div>
 
@@ -1806,7 +1807,11 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                 {autoDetectedNotes.map((an) => (
                   <span
                     key={an.id}
-                    className="bg-white text-emerald-900 border border-emerald-300 font-semibold px-2 py-0.5 rounded text-[11px] shadow-2xs"
+                    className={`font-semibold px-2 py-0.5 rounded text-[11px] shadow-2xs ${
+                      an.rule === "speed_teardown"
+                        ? "bg-white text-emerald-900 border border-emerald-300"
+                        : "bg-[#FFFF00] text-black border border-yellow-400 font-bold italic"
+                    }`}
                   >
                     {an.rule === "speed_install" && `⚡ SPEED Install (${getDayDisplayName(an.day)})`}
                     {an.rule === "speed_teardown" && `⚡ SPEED Teardown (${getDayDisplayName(an.day)})`}
@@ -2024,9 +2029,20 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                       Note Content:
                     </label>
                     <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-lg text-emerald-950 font-medium">
-                      <span className="bg-[#00FF00] text-black font-bold italic px-1.5 py-0.5 rounded shadow-2xs">
-                        {formatNoteTextWithPrefix(noteInputText)}
-                      </span>
+                      {noteInputText.includes("See correct Format:") ? (
+                        <span>
+                          <span className="bg-[#00FF00] text-black font-bold italic px-1.5 py-0.5 rounded-l shadow-2xs">
+                            {noteInputText.substring(0, noteInputText.indexOf("See correct Format:")).trim()}
+                          </span>{" "}
+                          <span className="bg-[#FFFF00] text-black font-bold italic px-1.5 py-0.5 rounded-r shadow-2xs">
+                            {noteInputText.substring(noteInputText.indexOf("See correct Format:")).trim()}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className={`${isAutomaticSpeedOrTmcNote(noteInputText) ? "bg-[#FFFF00]" : "bg-[#00FF00]"} text-black font-bold italic px-1.5 py-0.5 rounded shadow-2xs`}>
+                          {formatNoteTextWithPrefix(noteInputText)}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -2095,6 +2111,12 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                           </span>{" "}
                           <span className="bg-[#FFFF00] text-black font-bold italic px-1.5 py-0.5 rounded-r shadow-2xs">
                             {note.text.substring(note.text.indexOf("See correct Format:")).trim()}
+                          </span>
+                        </span>
+                      ) : isAutomaticSpeedOrTmcNote(note.text) ? (
+                        <span className="text-xs truncate">
+                          <span className="bg-[#FFFF00] text-black font-bold italic px-1.5 py-0.5 rounded shadow-2xs">
+                            {formatNoteTextWithPrefix(note.text)}
                           </span>
                         </span>
                       ) : (
@@ -3370,9 +3392,26 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                         </div>
 
                         <div className="mt-1 text-xs">
-                          <span className="bg-[#00FF00] text-black font-bold italic px-1.5 py-0.5 rounded text-[11px] inline-block shadow-2xs">
-                            {formatNoteTextWithPrefix(preset.text)}
-                          </span>
+                          {preset.text.includes("See correct Format:") ? (
+                            <span className="text-xs">
+                              <span className="bg-[#00FF00] text-black font-bold italic px-1.5 py-0.5 rounded-l text-[11px] shadow-2xs">
+                                {preset.text.substring(0, preset.text.indexOf("See correct Format:")).trim()}
+                              </span>{" "}
+                              <span className="bg-[#FFFF00] text-black font-bold italic px-1.5 py-0.5 rounded-r text-[11px] shadow-2xs">
+                                {preset.text.substring(preset.text.indexOf("See correct Format:")).trim()}
+                              </span>
+                            </span>
+                          ) : (
+                            <span
+                              className={`${
+                                isAutomaticSpeedOrTmcNote(preset.text)
+                                  ? "bg-[#FFFF00]"
+                                  : "bg-[#00FF00]"
+                              } text-black font-bold italic px-1.5 py-0.5 rounded text-[11px] inline-block shadow-2xs`}
+                            >
+                              {formatNoteTextWithPrefix(preset.text)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
