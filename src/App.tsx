@@ -341,9 +341,8 @@ export default function App() {
       />
 
       {/* Main App Canvas */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {activeTab === "dashboard" ? (
-          /* Landing Page & Operational Dashboard */
+      {activeTab === "dashboard" ? (
+        <main className="flex-1 w-full">
           <DashboardLanding
             onGoToGenerator={() => setActiveTab("generator")}
             onGoToHistory={() => setActiveTab("history")}
@@ -353,10 +352,11 @@ export default function App() {
             savedEmailsCount={savedEmailsCount}
             currentFileName={currentFileName}
           />
-        ) : (
-          <>
-            {/* View Mode Navigation Tabs: Generator vs Saved History vs ALG/TMC Approval */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#CFE0B8] pb-1 gap-3">
+        </main>
+      ) : (
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* View Mode Navigation Tabs: Generator vs Saved History vs ALG/TMC Approval */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#CFE0B8] pb-1 gap-3">
               <div className="flex items-center space-x-2 -mb-px flex-wrap gap-y-2">
                 {/* Tab 1: Email Generator */}
                 <button
@@ -610,9 +610,8 @@ export default function App() {
                 <AlgTmcApprovalPanel />
               </div>
             )}
-          </>
-        )}
-      </main>
+        </main>
+      )}
 
       {/* Global Application Footer */}
       <Footer
