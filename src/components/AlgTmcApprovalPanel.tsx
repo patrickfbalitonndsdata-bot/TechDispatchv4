@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import {
   FileText,
   UploadCloud,
@@ -19,6 +19,8 @@ import {
   Calendar,
   Clock,
   Plus,
+  FileSignature,
+  Eye,
 } from "lucide-react";
 import {
   ScannedPdfData,
@@ -34,12 +36,29 @@ import {
   KmzAttachment,
   createMultipartEml,
 } from "../utils/pdfParser";
+import {
+  EMAIL_SIGNATURE_PRESETS,
+  renderEmailSignatureHtml,
+  renderEmailSignatureText,
+} from "../utils/signaturePresets";
+import {
+  EmailSignaturePresetId,
+  EmailSignatureDetails,
+  TemplateBranding,
+} from "../types";
+import { EmailSignatureModal } from "./EmailSignatureModal";
 
 interface AlgTmcApprovalPanelProps {
   onScannedDataChange?: (data: ScannedPdfData[]) => void;
+  branding?: TemplateBranding;
+  onUpdateBranding?: (partial: Partial<TemplateBranding>) => void;
 }
 
-export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScannedDataChange }) => {
+export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({
+  onScannedDataChange,
+  branding: brandingProp,
+  onUpdateBranding,
+}) => {
   const [pdfList, setPdfList] = useState<ScannedPdfData[]>([]);
   // activeTab: "combined" | 0 | 1
   const [activeTab, setActiveTab] = useState<"combined" | number>(0);
@@ -56,26 +75,140 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
   const [kmzList, setKmzList] = useState<KmzAttachment[]>([]);
   const [isDraggingKmz, setIsDraggingKmz] = useState<boolean>(false);
 
+  // 3. Email Signature State & Presets (Patrick, James, Kyle, Katrin)
+  const [emailSignatureEnabled, setEmailSignatureEnabled] = useState<boolean>(() => {
+    if (brandingProp?.emailSignatureEnabled !== undefined) {
+      return Boolean(brandingProp.emailSignatureEnabled);
+    }
+    const saved = localStorage.getItem("algtmc_email_signature_enabled");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const [selectedSignaturePreset, setSelectedSignaturePreset] = useState<EmailSignaturePresetId>(() => {
+    if (brandingProp?.emailSignaturePreset) {
+      return brandingProp.emailSignaturePreset;
+    }
+    const saved = localStorage.getItem("algtmc_email_signature_preset");
+    if (saved && (saved === "patrick" || saved === "james" || saved === "kyle" || saved === "katrin")) {
+      return saved as EmailSignaturePresetId;
+    }
+    return "patrick";
+  });
+
+  const [customSignatureFields, setCustomSignatureFields] = useState<Partial<EmailSignatureDetails>>(
+    brandingProp?.customEmailSignature || {}
+  );
+  const [showSignatureModal, setShowSignatureModal] = useState<boolean>(false);
+
+  // Synchronize when brandingProp updates
+  useEffect(() => {
+    if (brandingProp?.emailSignatureEnabled !== undefined) {
+      setEmailSignatureEnabled(Boolean(brandingProp.emailSignatureEnabled));
+    }
+    if (brandingProp?.emailSignaturePreset) {
+      setSelectedSignaturePreset(brandingProp.emailSignaturePreset);
+    }
+    if (brandingProp?.customEmailSignature) {
+      setCustomSignatureFields(brandingProp.customEmailSignature);
+    }
+  }, [brandingProp]);
+
+  // Compute effective signature
+  const effectiveSignature: EmailSignatureDetails = useMemo(() => {
+    const base = EMAIL_SIGNATURE_PRESETS[selectedSignaturePreset] || EMAIL_SIGNATURE_PRESETS.patrick;
+    if (customSignatureFields && Object.keys(customSignatureFields).length > 0) {
+      return {
+        ...base,
+        ...customSignatureFields,
+        id: selectedSignaturePreset,
+      };
+    }
+    return base;
+  }, [selectedSignaturePreset, customSignatureFields]);
+
+  // Signature rendered snippets
+  const signatureHtml = useMemo(() => {
+    return emailSignatureEnabled ? renderEmailSignatureHtml(effectiveSignature) : "";
+  }, [emailSignatureEnabled, effectiveSignature]);
+
+  const signatureText = useMemo(() => {
+    return emailSignatureEnabled ? "\n\n" + renderEmailSignatureText(effectiveSignature) : "";
+  }, [emailSignatureEnabled, effectiveSignature]);
+
+  // Handlers for signature toggle and preset selection
+  const handleToggleSignature = (enabled: boolean) => {
+    setEmailSignatureEnabled(enabled);
+    localStorage.setItem("algtmc_email_signature_enabled", String(enabled));
+    if (onUpdateBranding) {
+      onUpdateBranding({ emailSignatureEnabled: enabled });
+    }
+  };
+
+  const handleSelectSignaturePreset = (preset: EmailSignaturePresetId) => {
+    setSelectedSignaturePreset(preset);
+    localStorage.setItem("algtmc_email_signature_preset", preset);
+    if (!emailSignatureEnabled) {
+      setEmailSignatureEnabled(true);
+      localStorage.setItem("algtmc_email_signature_enabled", "true");
+      if (onUpdateBranding) {
+        onUpdateBranding({
+          emailSignaturePreset: preset,
+          emailSignatureEnabled: true,
+        });
+        return;
+      }
+    }
+    if (onUpdateBranding) {
+      onUpdateBranding({ emailSignaturePreset: preset });
+    }
+  };
+
+  // Construct effective branding object for EmailSignatureModal
+  const effectiveBrandingForModal: TemplateBranding = useMemo(() => {
+    return (
+      brandingProp || {
+        companyName: "NDS",
+        dispatcherName: "Scheduling Team",
+        dispatcherTitle: "Scheduling Specialist",
+        companyPhone: "(800) 555-0199",
+        accentColor: "#1F4E79",
+        headerBgColor: "#3F4A33",
+        emailSignatureEnabled,
+        emailSignaturePreset: selectedSignaturePreset,
+        customEmailSignature: customSignatureFields,
+      }
+    );
+  }, [brandingProp, emailSignatureEnabled, selectedSignaturePreset, customSignatureFields]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const kmzInputRef = useRef<HTMLInputElement>(null);
 
-  // Re-generate combined approval email whenever pdfList or scheduleOption changes
+  // Re-generate combined approval email whenever pdfList, scheduleOption, or signature changes
   const combinedEmail: CombinedApprovalEmail | null = useMemo(() => {
-    return generateCombinedApprovalEmail(pdfList, scheduleOption);
-  }, [pdfList, scheduleOption]);
+    const base = generateCombinedApprovalEmail(pdfList, scheduleOption);
+    if (!base) return null;
+    if (emailSignatureEnabled && signatureText && signatureHtml) {
+      return {
+        ...base,
+        emailBodyText: base.emailBodyText + signatureText,
+        emailBodyHtml: base.emailBodyHtml + signatureHtml,
+      };
+    }
+    return base;
+  }, [pdfList, scheduleOption, emailSignatureEnabled, signatureText, signatureHtml]);
 
   // Determine active single PDF if not in combined view
   const activeSinglePdf: ScannedPdfData | undefined =
     typeof activeTab === "number" ? pdfList[activeTab] || pdfList[0] : pdfList[0];
 
-  // Helper to re-generate single PDF text & HTML with scheduleOption
+  // Helper to re-generate single PDF text & HTML with scheduleOption and optional signature
   const getSinglePdfRender = (pdf: ScannedPdfData) => {
     const isTmc = pdf.studyType.toUpperCase().includes("TMC");
     const urgencyLine = formatUrgencyLine(pdf.urgency, scheduleOption);
 
     if (isTmc) {
-      const text = `Hi James,\n\nPlease see TMC camera placement approval.\n\n${urgencyLine}\n\nProject Number: ${pdf.projectNumber}\nLocation/s: ${pdf.locationsCount}`;
-      const html = `
+      let text = `Hi James,\n\nPlease see TMC camera placement approval.\n\n${urgencyLine}\n\nProject Number: ${pdf.projectNumber}\nLocation/s: ${pdf.locationsCount}`;
+      let html = `
 <div style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000000; line-height: 1.5;">
   <p style="margin: 0 0 12px 0;">Hi James,</p>
   <p style="margin: 0 0 12px 0;">Please see TMC camera placement approval.</p>
@@ -83,10 +216,15 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
   <p style="margin: 0 0 4px 0;"><strong>Project Number:</strong> <strong>${pdf.projectNumber}</strong></p>
   <p style="margin: 0 0 0 0;"><strong>Location/s:</strong> ${pdf.locationsCount}</p>
 </div>`.trim();
+
+      if (emailSignatureEnabled) {
+        text += signatureText;
+        html += signatureHtml;
+      }
       return { text, html, subject: formatTmcSubject(pdf.projectNumber) };
     } else {
-      const text = `Hi Nina/Marisa,\n\nPlease see ALG conversion attached.\n\n${urgencyLine}\n\nRegion: ${pdf.region || "South Central"}\nProject Number: ${pdf.projectNumber}\nLocation/s: ${pdf.locationsCount}\nStudy: ${pdf.fullStudyFormatted}`;
-      const html = `
+      let text = `Hi Nina/Marisa,\n\nPlease see ALG conversion attached.\n\n${urgencyLine}\n\nRegion: ${pdf.region || "South Central"}\nProject Number: ${pdf.projectNumber}\nLocation/s: ${pdf.locationsCount}\nStudy: ${pdf.fullStudyFormatted}`;
+      let html = `
 <div style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #000000; line-height: 1.5;">
   <p style="margin: 0 0 12px 0;">Hi Nina/Marisa,</p>
   <p style="margin: 0 0 12px 0;">Please see ALG conversion attached.</p>
@@ -96,6 +234,11 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
   <p style="margin: 0 0 4px 0;"><strong>Location/s:</strong> ${pdf.locationsCount}</p>
   <p style="margin: 0 0 0 0;"><strong>Study:</strong> ${pdf.fullStudyFormatted}</p>
 </div>`.trim();
+
+      if (emailSignatureEnabled) {
+        text += signatureText;
+        html += signatureHtml;
+      }
       return { text, html, subject: formatAtrSubject(pdf.projectNumber, pdf.addOns) };
     }
   };
@@ -464,7 +607,7 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
             onClick={() => setScheduleOption("today")}
             className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
               scheduleOption === "today"
-                ? "bg-[#3F4A33] text-white border-[#3F4A33] shadow-xs"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
                 : "bg-white text-[#3F4A33] border-[#CFE0B8] hover:bg-[#FBF7F0]"
             }`}
           >
@@ -477,7 +620,7 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
             onClick={() => setScheduleOption("next_week")}
             className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
               scheduleOption === "next_week"
-                ? "bg-[#3F4A33] text-white border-[#3F4A33] shadow-xs"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
                 : "bg-white text-[#3F4A33] border-[#CFE0B8] hover:bg-[#FBF7F0]"
             }`}
           >
@@ -490,7 +633,7 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
             onClick={() => setScheduleOption("today_next_week")}
             className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition cursor-pointer flex items-center gap-1.5 ${
               scheduleOption === "today_next_week"
-                ? "bg-[#3F4A33] text-white border-[#3F4A33] shadow-xs"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
                 : "bg-white text-[#3F4A33] border-[#CFE0B8] hover:bg-[#FBF7F0]"
             }`}
           >
@@ -502,13 +645,100 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
             onClick={() => setScheduleOption("none")}
             className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition cursor-pointer ${
               scheduleOption === "none"
-                ? "bg-[#3F4A33] text-white border-[#3F4A33] shadow-xs"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
                 : "bg-white text-[#3F4A33] border-[#CFE0B8] hover:bg-[#FBF7F0]"
             }`}
             title="Just show URGENCY: <Urgency> with no suffix"
           >
             <span>Urgency Only</span>
           </button>
+        </div>
+      </div>
+
+      {/* 2. EMAIL SIGNATURE TOGGLE & 4 SIGNATURES (Patrick, James, Kyle, Katrin) */}
+      <div className="bg-[#EDF3E3] border border-[#CFE0B8] rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-2.5">
+          <div
+            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs transition-colors ${
+              emailSignatureEnabled ? "bg-yellow-400 text-black font-bold" : "bg-[#8AA66B] text-white"
+            }`}
+          >
+            <FileSignature className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#3F4A33] flex items-center gap-1.5">
+              <span>Email Signature Toggle</span>
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold transition ${
+                  emailSignatureEnabled
+                    ? "bg-[#FFFF00] text-black border border-yellow-400"
+                    : "bg-zinc-200 text-zinc-600"
+                }`}
+              >
+                {emailSignatureEnabled ? `ON • ${effectiveSignature.label}` : "OFF"}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#3F4A33]/70">
+              Appends official NDS signature to approval emails &amp; Outlook .EML exports.
+            </p>
+          </div>
+        </div>
+
+        {/* Email Signature Toggle & 4 Presets inside it */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Main Toggle Button */}
+          <button
+            type="button"
+            onClick={() => handleToggleSignature(!emailSignatureEnabled)}
+            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all duration-200 cursor-pointer shadow-2xs ${
+              emailSignatureEnabled
+                ? "bg-[#FFFF00] text-black border-yellow-400 ring-2 ring-yellow-400/50 shadow-xs"
+                : "bg-white text-[#3F4A33] border-[#CFE0B8] hover:bg-[#FBF7F0]"
+            }`}
+            title="When toggled ON: Appends signature to email body and .EML export"
+          >
+            <FileSignature className={`w-3.5 h-3.5 ${emailSignatureEnabled ? "text-black" : "text-[#3F4A33]"}`} />
+            <span>Email Signature</span>
+            <span
+              className={`w-2 h-2 rounded-full transition ${
+                emailSignatureEnabled ? "bg-black animate-pulse" : "bg-zinc-300"
+              }`}
+            />
+          </button>
+
+          {/* 4 Signatures inside it: Patrick, James, Kyle, Katrin */}
+          <div className="flex items-center bg-white p-0.5 rounded-lg border border-[#CFE0B8] shadow-2xs">
+            {(["patrick", "james", "kyle", "katrin"] as const).map((presetKey) => {
+              const isSelected = selectedSignaturePreset === presetKey;
+              const presetInfo = EMAIL_SIGNATURE_PRESETS[presetKey];
+              return (
+                <button
+                  key={presetKey}
+                  type="button"
+                  onClick={() => handleSelectSignaturePreset(presetKey)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer ${
+                    isSelected && emailSignatureEnabled
+                      ? "bg-[#FFFF00] text-black border border-yellow-400 shadow-2xs"
+                      : isSelected
+                      ? "bg-[#EDF3E3] text-[#3F4A33] border border-[#CFE0B8]"
+                      : "text-[#3F4A33]/75 hover:text-[#3F4A33] hover:bg-[#FBF7F0]"
+                  }`}
+                  title={`Select ${presetInfo.label} (${presetInfo.name} – ${presetInfo.title})`}
+                >
+                  {presetInfo.label}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setShowSignatureModal(true)}
+              className="px-1.5 py-1 text-[#3F4A33]/70 hover:text-[#3F4A33] hover:bg-[#EDF3E3] rounded-md transition cursor-pointer"
+              title="Open Email Signature Settings & Full Preview"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1119,6 +1349,31 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
                           </div>
                         </>
                       )}
+
+                      {/* Live Email Signature Preview */}
+                      {emailSignatureEnabled && (
+                        <div className="pt-3 border-t border-zinc-200 mt-4 text-xs font-sans space-y-1 text-left select-text">
+                          <p className="text-zinc-800 mb-2">{effectiveSignature.greeting}</p>
+                          <p className="font-bold italic text-zinc-900 text-sm">{effectiveSignature.name}</p>
+                          <p className="font-bold italic text-[#1F4E79]">{effectiveSignature.title}</p>
+                          <p className="font-bold text-[#1F4E79]">{effectiveSignature.company}</p>
+                          <p className="font-bold text-zinc-500 text-[11px]">{effectiveSignature.officeLabel || "Corporate Office:"}</p>
+                          <p className="text-zinc-600">{effectiveSignature.address}</p>
+                          {effectiveSignature.website && (
+                            <p>
+                              <a
+                                href={`https://${effectiveSignature.website.replace(/^https?:\/\//, "")}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-zinc-600 underline"
+                              >
+                                {effectiveSignature.website}
+                              </a>
+                            </p>
+                          )}
+                          <p className="font-bold text-[#1F4E79] text-sm pt-2">{effectiveSignature.tagline}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1446,6 +1701,31 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
                             </div>
                           </>
                         )}
+
+                        {/* Live Email Signature Preview */}
+                        {emailSignatureEnabled && (
+                          <div className="pt-3 border-t border-zinc-200 mt-4 text-xs font-sans space-y-1 text-left select-text">
+                            <p className="text-zinc-800 mb-2">{effectiveSignature.greeting}</p>
+                            <p className="font-bold italic text-zinc-900 text-sm">{effectiveSignature.name}</p>
+                            <p className="font-bold italic text-[#1F4E79]">{effectiveSignature.title}</p>
+                            <p className="font-bold text-[#1F4E79]">{effectiveSignature.company}</p>
+                            <p className="font-bold text-zinc-500 text-[11px]">{effectiveSignature.officeLabel || "Corporate Office:"}</p>
+                            <p className="text-zinc-600">{effectiveSignature.address}</p>
+                            {effectiveSignature.website && (
+                              <p>
+                                <a
+                                  href={`https://${effectiveSignature.website.replace(/^https?:\/\//, "")}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-zinc-600 underline"
+                                >
+                                  {effectiveSignature.website}
+                                </a>
+                              </p>
+                            )}
+                            <p className="font-bold text-[#1F4E79] text-sm pt-2">{effectiveSignature.tagline}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1455,6 +1735,31 @@ export const AlgTmcApprovalPanel: React.FC<AlgTmcApprovalPanelProps> = ({ onScan
           )}
         </div>
       )}
+
+      {/* Email Signature Settings & Customization Modal */}
+      <EmailSignatureModal
+        isOpen={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+        branding={effectiveBrandingForModal}
+        onUpdateBranding={(partial) => {
+          if (partial.emailSignatureEnabled !== undefined) {
+            setEmailSignatureEnabled(partial.emailSignatureEnabled);
+            localStorage.setItem("algtmc_email_signature_enabled", String(partial.emailSignatureEnabled));
+          }
+          if (partial.emailSignaturePreset) {
+            setSelectedSignaturePreset(partial.emailSignaturePreset);
+            localStorage.setItem("algtmc_email_signature_preset", partial.emailSignaturePreset);
+          }
+          if (partial.customEmailSignature) {
+            setCustomSignatureFields(partial.customEmailSignature);
+          }
+          if (onUpdateBranding) {
+            onUpdateBranding(partial);
+          }
+        }}
+        onToggleEmailSignature={handleToggleSignature}
+        onSelectPreset={handleSelectSignaturePreset}
+      />
     </div>
   );
 };
