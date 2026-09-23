@@ -1386,17 +1386,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                 onUpdateBranding({ additionalNotesEnabled: nextVal });
               }
             }}
-            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
               branding.additionalNotesEnabled
-                ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200"
-                : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
+                : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
             }`}
             title="When toggled ON: Add custom notes under specific days styled in green, bold, and italic text."
           >
             <span>Additional Notes</span>
             <span
               className={`w-2 h-2 rounded-full transition ${
-                branding.additionalNotesEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                branding.additionalNotesEnabled ? "bg-black animate-pulse" : "bg-white/30"
               }`}
             />
           </button>
@@ -1412,17 +1412,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                 onUpdateBranding({ sundaySundayEnabled: nextVal });
               }
             }}
-            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
               branding.sundaySundayEnabled
-                ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200"
-                : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
+                : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
             }`}
             title="When toggled ON: Adds another Sunday after Saturday, displaying dates for both Upper and Lower Sunday."
           >
             <span>Sunday - Sunday</span>
             <span
               className={`w-2 h-2 rounded-full transition ${
-                branding.sundaySundayEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                branding.sundaySundayEnabled ? "bg-black animate-pulse" : "bg-white/30"
               }`}
             />
           </button>
@@ -1438,17 +1438,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                 onUpdateBranding({ overlappingSchedulesEnabled: nextVal });
               }
             }}
-            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
               branding.overlappingSchedulesEnabled
-                ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200 ring-1 ring-amber-300/40"
-                : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs ring-1 ring-yellow-400/50"
+                : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
             }`}
             title="When toggled ON: Reads overlapping Battery Swaps, Teardowns, and carryover tasks from last week and combines them into the current week's schedule."
           >
             <span>Overlapping Schedule</span>
             <span
               className={`w-2 h-2 rounded-full transition ${
-                branding.overlappingSchedulesEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                branding.overlappingSchedulesEnabled ? "bg-black animate-pulse" : "bg-white/30"
               }`}
             />
           </button>
@@ -1464,17 +1464,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                 onUpdateBranding({ conductStudyEnabled: nextVal });
               }
             }}
-            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
               branding.conductStudyEnabled
-                ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200 ring-1 ring-amber-300/40"
-                : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs ring-1 ring-yellow-400/50"
+                : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
             }`}
             title="When toggled ON: Formats Parking and Radar studies as 'Conduct <Study>: <Project Number> <City, State> (<Time Duration>)' and enables PEDS Conduct Sight Distance lines."
           >
             <span>Conduct Study</span>
             <span
               className={`w-2 h-2 rounded-full transition ${
-                branding.conductStudyEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                branding.conductStudyEnabled ? "bg-black animate-pulse" : "bg-white/30"
               }`}
             />
           </button>
@@ -1483,17 +1483,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
           <button
             type="button"
             onClick={() => handleToggleEmailUpdates(!branding.emailUpdatesEnabled)}
-            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+            className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
               branding.emailUpdatesEnabled
-                ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200"
-                : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
+                : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
             }`}
             title="When toggled ON: Adds 'UPDATE v<version>' to the email subject line and inserts a highlighted yellow banner in the greeting."
           >
             <span>Email Updates</span>
             <span
               className={`w-2 h-2 rounded-full transition ${
-                branding.emailUpdatesEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                branding.emailUpdatesEnabled ? "bg-black animate-pulse" : "bg-white/30"
               }`}
             />
           </button>
@@ -1503,17 +1503,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
             <button
               type="button"
               onClick={() => handleToggleManualPriorVersions(!branding.manualPriorVersionsEnabled)}
-              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
                 branding.manualPriorVersionsEnabled
-                  ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200 ring-1 ring-amber-300/40"
-                  : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                  ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs ring-1 ring-yellow-400/50"
+                  : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
               }`}
               title="When toggled ON: Allows you to manually input notes for prior email versions (e.g. for v3, input notes for v2 and v1) that stack underneath the active update banner."
             >
               <span>Input Prior Versions</span>
               <span
                 className={`w-2 h-2 rounded-full transition ${
-                  branding.manualPriorVersionsEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                  branding.manualPriorVersionsEnabled ? "bg-black animate-pulse" : "bg-white/30"
                 }`}
               />
             </button>
@@ -1523,17 +1523,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
             <button
               type="button"
               onClick={() => onToggleAnytime(!branding.useAnytimeTeardowns)}
-              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
                 branding.useAnytimeTeardowns
-                  ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200"
-                  : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                  ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
+                  : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
               }`}
               title="When toggled ON: Teardowns with 0:30 time appear on their exact Teardown After date with 'Anytime'."
             >
               <span>Anytime</span>
               <span
                 className={`w-2 h-2 rounded-full transition ${
-                  branding.useAnytimeTeardowns ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                  branding.useAnytimeTeardowns ? "bg-black animate-pulse" : "bg-white/30"
                 }`}
               />
             </button>
@@ -1543,17 +1543,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
             <button
               type="button"
               onClick={() => onToggleLadotd(!branding.ladotdExclusive)}
-              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
                 branding.ladotdExclusive
-                  ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200"
-                  : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                  ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs"
+                  : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
               }`}
               title="When toggled ON: Formats project 26-240026 with LADOTD specifications."
             >
               <span>LADOTD Exclusive</span>
               <span
                 className={`w-2 h-2 rounded-full transition ${
-                  branding.ladotdExclusive ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                  branding.ladotdExclusive ? "bg-black animate-pulse" : "bg-white/30"
                 }`}
               />
             </button>
@@ -1574,17 +1574,17 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                   setShowCodSightDistanceModal(true);
                 }
               }}
-              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
                 branding.codExclusive
-                  ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200 ring-1 ring-amber-300/40"
-                  : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                  ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs ring-1 ring-yellow-400/50"
+                  : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
               }`}
               title="When toggled ON: Scans Scheduling Team Notes for '(City of Dallas – List ...)' and places this into the main task line instead of <City, State>, sequences COD teardowns together, and prompts for picking locations for Conduct Sight Distance."
             >
               <span>COD Exclusive</span>
               <span
                 className={`w-2 h-2 rounded-full transition ${
-                  branding.codExclusive ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                  branding.codExclusive ? "bg-black animate-pulse" : "bg-white/30"
                 }`}
               />
             </button>
@@ -1627,18 +1627,18 @@ export const OutlookEmailPreview: React.FC<OutlookEmailPreviewProps> = ({
                   onUpdateBranding({ emailSignatureEnabled: nextVal });
                 }
               }}
-              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 bg-transparent ${
+              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all duration-300 cursor-pointer transform hover:-translate-y-0.5 ${
                 branding.emailSignatureEnabled
-                  ? "text-amber-300 border-amber-400 hover:bg-amber-400/20 hover:border-amber-200 ring-1 ring-amber-300/40"
-                  : "text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
+                  ? "bg-[#FFFF00] text-black border-yellow-400 shadow-xs ring-1 ring-yellow-400/50"
+                  : "bg-transparent text-[#EDF3E3]/80 border-[#CFE0B8]/35 hover:text-white hover:border-[#CFE0B8] hover:bg-white/5"
               }`}
               title="When toggled ON: Appends the selected email signature (James, Kyle, Patrick, Katrin) to the bottom of the email."
             >
-              <FileSignature className={`w-3.5 h-3.5 ${branding.emailSignatureEnabled ? "text-amber-300" : "text-[#EDF3E3]/70"}`} />
+              <FileSignature className={`w-3.5 h-3.5 ${branding.emailSignatureEnabled ? "text-black" : "text-[#EDF3E3]/70"}`} />
               <span>Email Signature</span>
               <span
                 className={`w-2 h-2 rounded-full transition ${
-                  branding.emailSignatureEnabled ? "bg-amber-400 animate-pulse" : "bg-white/30"
+                  branding.emailSignatureEnabled ? "bg-black animate-pulse" : "bg-white/30"
                 }`}
               />
             </button>
