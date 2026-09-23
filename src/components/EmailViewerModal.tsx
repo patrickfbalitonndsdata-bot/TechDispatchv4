@@ -1,0 +1,384 @@
+import React, { useState } from "react";
+import {
+  X,
+  Mail,
+  Copy,
+  Check,
+  Download,
+  ExternalLink,
+  Calendar,
+  User,
+  Monitor,
+  Smartphone,
+  RotateCcw,
+  Sparkles,
+  ArrowLeftRight,
+  Paperclip,
+} from "lucide-react";
+import { GeneratedEmailRecord } from "../utils/generatedEmailStorage";
+import { copyRichHtmlToClipboard, cleanTechnicianName } from "../utils/outlookTemplateGenerator";
+
+interface EmailViewerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  record: GeneratedEmailRecord | null;
+  onLoadIntoGenerator?: (record: GeneratedEmailRecord) => void;
+}
+
+export const EmailViewerModal: React.FC<EmailViewerModalProps> = ({
+  isOpen,
+  onClose,
+  record,
+  onLoadIntoGenerator,
+}) => {
+  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
+  const [copiedHtml, setCopiedHtml] = useState(false);
+  const [copiedSubject, setCopiedSubject] = useState(false);
+
+  if (!isOpen || !record) return null;
+
+  const handleCopyHtml = async () => {
+    if (!record.htmlContent) return;
+    const success = await copyRichHtmlToClipboard(record.htmlContent, record.plainTextContent || "");
+    if (success) {
+      setCopiedHtml(true);
+      setTimeout(() => setCopiedHtml(false), 2500);
+    }
+  };
+
+  const handleCopySubject = () => {
+    navigator.clipboard.writeText(record.subject);
+    setCopiedSubject(true);
+    setTimeout(() => setCopiedSubject(false), 2000);
+  };
+
+  const handleDownloadAttachment = (att: { name: string; base64Data: string; type?: string }) => {
+    try {
+      const byteCharacters = atob(att.base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: att.type || "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = att.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Failed to download attachment", e);
+    }
+  };
+
+  const handleDownloadEml = () => {
+    if (!record.htmlContent) return;
+    const activeAttachments = record.attachments || record.brandingConfig?.attachments || [];
+    let emlContent: string;
+
+    if (activeAttachments.length > 0) {
+      const mixedBoundary = `----=_MixedPart_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+      const altBoundary = `----=_AltPart_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+      const lines: string[] = [
+        `From: "NDS Dispatch Scheduling" <dispatch@ndsdata.com>`,
+        `To: "${cleanTechnicianName(record.cleanTechName)}" <technician@ndsdata.com>`,
+        `Subject: ${record.subject}`,
+        `MIME-Version: 1.0`,
+        `X-Unsent: 1`,
+        `Content-Type: multipart/mixed; boundary="${mixedBoundary}"`,
+        ``,
+        `--${mixedBoundary}`,
+        `Content-Type: multipart/alternative; boundary="${altBoundary}"`,
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/plain; charset=UTF-8`,
+        `Content-Transfer-Encoding: 7bit`,
+        ``,
+        record.plainTextContent || "NDS Technician Schedule",
+        ``,
+        `--${altBoundary}`,
+        `Content-Type: text/html; charset=UTF-8`,
+        `Content-Transfer-Encoding: 7bit`,
+        ``,
+        record.htmlContent,
+        ``,
+        `--${altBoundary}--`,
+      ];
+
+      for (const att of activeAttachments) {
+        if (!att.base64Data) continue;
+        const contentType = att.type || "application/octet-stream";
+        const filename = att.name || "attachment";
+        const formattedBase64 = att.base64Data.match(/.{1,76}/g)?.join("\r\n") || att.base64Data;
+        lines.push(
+          `--${mixedBoundary}`,
+          `Content-Type: ${contentType}; name="${filename}"`,
+          `Content-Disposition: attachment; filename="${filename}"`,
+          `Content-Transfer-Encoding: base64`,
+          ``,
+          formattedBase64
+        );
+      }
+
+      lines.push(`--${mixedBoundary}--`);
+      emlContent = lines.join("\r\n");
+    } else {
+      const boundary = "----=_NextPart_" + Date.now().toString(16);
+      emlContent = [
+        `From: "NDS Dispatch Scheduling" <dispatch@ndsdata.com>`,
+        `To: "${cleanTechnicianName(record.cleanTechName)}" <technician@ndsdata.com>`,
+        `Subject: ${record.subject}`,
+        `MIME-Version: 1.0`,
+        `Content-Type: multipart/alternative; boundary="${boundary}"`,
+        `X-Unsent: 1`,
+        ``,
+        `--${boundary}`,
+        `Content-Type: text/plain; charset=UTF-8`,
+        `Content-Transfer-Encoding: 7bit`,
+        ``,
+        record.plainTextContent || "NDS Technician Schedule",
+        ``,
+        `--${boundary}`,
+        `Content-Type: text/html; charset=UTF-8`,
+        `Content-Transfer-Encoding: 7bit`,
+        ``,
+        record.htmlContent,
+        ``,
+        `--${boundary}--`,
+      ].join("\r\n");
+    }
+
+    const blob = new Blob([emlContent], { type: "message/rfc822" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeName = record.cleanTechName.replace(/[^a-zA-Z0-9_-]/g, "_");
+    a.download = `Saved_${safeName}_${String(record.version).replace(/\s+/g, "_")}.eml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[92vh] flex flex-col border border-[#CFE0B8] overflow-hidden">
+        {/* Modal Top Header */}
+        <div className="px-6 py-4 bg-[#3F4A33] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-[#8AA66B] text-white flex items-center justify-center font-bold shadow-xs">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2 flex-wrap">
+                <h2 className="text-sm font-bold text-white">Stored Email Display Viewer</h2>
+                <span
+                  className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    String(record.version).toLowerCase().includes("update") ||
+                    (String(record.version).toLowerCase().includes("v") && !String(record.version).toLowerCase().includes("v0"))
+                      ? "bg-[#EDF3E3] text-[#3F4A33] border border-[#CFE0B8]"
+                      : "bg-[#CFE0B8] text-[#3F4A33]"
+                  }`}
+                >
+                  {record.version}
+                </span>
+                <span className="bg-white/15 text-[#EDF3E3] text-[10px] font-semibold px-2 py-0.5 rounded-full border border-white/20">
+                  {record.exportMethod}
+                </span>
+              </div>
+              <p className="text-xs text-[#CFE0B8] flex items-center space-x-2 mt-0.5">
+                <span>{cleanTechnicianName(record.cleanTechName)}</span>
+                <span>•</span>
+                <span>{record.workWeek}</span>
+                <span>•</span>
+                <span className="text-[#CFE0B8]/80 font-mono">{record.dateFormatted}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Top Controls: View mode switcher & Close button */}
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 bg-black/20 p-1 rounded-xl border border-white/10">
+              <button
+                onClick={() => setViewMode("desktop")}
+                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === "desktop" ? "bg-[#8AA66B] text-white shadow-xs" : "text-[#CFE0B8] hover:text-white"
+                }`}
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>Desktop</span>
+              </button>
+              <button
+                onClick={() => setViewMode("mobile")}
+                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === "mobile" ? "bg-[#8AA66B] text-white shadow-xs" : "text-[#CFE0B8] hover:text-white"
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>Mobile</span>
+              </button>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="text-[#CFE0B8] hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
+              title="Close viewer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Subject Header Bar */}
+        <div className="px-6 py-2.5 bg-[#FBF7F0] border-b border-[#CFE0B8] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center space-x-2 min-w-0 flex-1">
+            <span className="font-bold text-[#3F4A33]/70 shrink-0">Subject:</span>
+            <span className="font-bold text-[#3F4A33] select-all truncate">{record.subject}</span>
+          </div>
+          <button
+            onClick={handleCopySubject}
+            className="flex items-center space-x-1 text-[11px] font-bold text-[#3F4A33] hover:bg-[#EDF3E3] bg-white border border-[#CFE0B8] px-2.5 py-1 rounded-xl transition shrink-0 cursor-pointer shadow-2xs"
+          >
+            {copiedSubject ? (
+              <>
+                <Check className="w-3 h-3 text-[#8AA66B]" />
+                <span className="text-[#8AA66B]">Copied Subject</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3 h-3 text-[#8AA66B]" />
+                <span>Copy Subject</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Stored Custom Notes / Details if present */}
+        {record.notes && (
+          <div className="px-6 py-2 bg-yellow-50/80 border-b border-yellow-200 text-xs text-yellow-950 flex items-center space-x-2">
+            <span className="font-bold shrink-0">Update Note Recorded:</span>
+            <span className="italic">{record.notes}</span>
+          </div>
+        )}
+
+        {/* Stored Attachments Bar if present */}
+        {((record.attachments && record.attachments.length > 0) || (record.brandingConfig?.attachments && record.brandingConfig.attachments.length > 0)) && (
+          <div className="px-6 py-2 bg-blue-50/90 border-b border-blue-200 text-xs text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 flex-wrap">
+              <span className="font-bold flex items-center space-x-1 text-blue-900">
+                <Paperclip className="w-3.5 h-3.5 text-blue-700" />
+                <span>
+                  Saved Attachments (
+                  {(record.attachments || record.brandingConfig?.attachments || []).length}
+                  ):
+                </span>
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(record.attachments || record.brandingConfig?.attachments || []).map((att) => (
+                  <span
+                    key={att.id}
+                    className="inline-flex items-center space-x-1.5 bg-white border border-blue-200 px-2 py-0.5 rounded text-[11px] font-medium shadow-2xs"
+                  >
+                    <span className="truncate max-w-[160px]">{att.name}</span>
+                    {att.base64Data && (
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadAttachment(att)}
+                        className="text-blue-600 hover:text-blue-900 p-0.5 hover:bg-blue-100 rounded transition cursor-pointer"
+                        title={`Download ${att.name}`}
+                      >
+                        <Download className="w-3 h-3" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <span className="text-[11px] text-blue-700 italic shrink-0">
+              Preserved with this version
+            </span>
+          </div>
+        )}
+
+        {/* Rendered Email Body Area */}
+        <div className="flex-1 overflow-y-auto bg-zinc-100 p-4 sm:p-6 flex justify-center">
+          <div
+            className={`bg-white rounded-xl shadow-xs transition-all duration-200 overflow-hidden w-full ${
+              viewMode === "mobile" ? "max-w-[420px] p-4" : "max-w-4xl p-6"
+            }`}
+          >
+            {record.htmlContent ? (
+              <div
+                className="outlook-saved-preview prose max-w-none"
+                dangerouslySetInnerHTML={{ __html: record.htmlContent }}
+              />
+            ) : (
+              <div className="p-8 text-center text-zinc-500 space-y-2">
+                <Mail className="w-8 h-8 text-zinc-400 mx-auto" />
+                <p className="font-semibold text-sm">HTML content was not stored for this record</p>
+                <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                  Subject: {record.subject}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Modal Bottom Action Bar */}
+        <div className="px-6 py-3.5 bg-[#FBF7F0] border-t border-[#CFE0B8] flex flex-wrap items-center justify-between gap-3">
+          <div>
+            {onLoadIntoGenerator && (
+              <button
+                onClick={() => {
+                  onLoadIntoGenerator(record);
+                  onClose();
+                }}
+                className="flex items-center space-x-1.5 text-xs font-bold text-[#3F4A33] bg-[#EDF3E3] hover:bg-[#CFE0B8] border border-[#CFE0B8] px-3.5 py-2 rounded-xl transition cursor-pointer shadow-2xs"
+                title="Load this technician's notes and configuration into the active generator"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-[#8AA66B]" />
+                <span>Load in Generator</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Copy HTML */}
+            <button
+              onClick={handleCopyHtml}
+              className="flex items-center space-x-1.5 text-xs font-bold bg-white hover:bg-[#EDF3E3] text-[#3F4A33] px-3.5 py-2 rounded-xl border border-[#CFE0B8] shadow-xs transition cursor-pointer"
+            >
+              {copiedHtml ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-[#8AA66B]" />
+                  <span className="text-[#8AA66B]">Copied for Outlook!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-[#8AA66B]" />
+                  <span>Copy Styled HTML</span>
+                </>
+              )}
+            </button>
+
+            {/* Download EML */}
+            <button
+              onClick={handleDownloadEml}
+              className="flex items-center space-x-1.5 text-xs font-bold bg-[#8AA66B] hover:bg-[#7a965c] text-white px-4 py-2 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download (.EML)</span>
+            </button>
+
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="text-xs font-bold text-[#3F4A33] hover:bg-[#EDF3E3] px-3.5 py-2 rounded-xl border border-[#CFE0B8] transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,542 @@
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  Mail,
+  Search,
+  Trash2,
+  Download,
+  Calendar,
+  User,
+  History,
+  Sparkles,
+  Copy,
+  Check,
+  Eye,
+  ExternalLink,
+  RotateCcw,
+  Layers,
+  ArrowRight,
+  Filter,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  GeneratedEmailRecord,
+  getStoredGeneratedEmails,
+  deleteStoredGeneratedEmail,
+  clearStoredGeneratedEmailsForTech,
+  clearStoredGeneratedEmailsForWorkWeeks,
+  LOCAL_STORAGE_KEY_EMAILS,
+  NDS_SAVED_EMAILS_EVENT,
+} from "../utils/generatedEmailStorage";
+import { cleanTechnicianName, copyRichHtmlToClipboard } from "../utils/outlookTemplateGenerator";
+import { EmailViewerModal } from "./EmailViewerModal";
+import { ClearWorkWeekModal } from "./ClearWorkWeekModal";
+
+interface SavedEmailsHistoryTabProps {
+  activeTechName?: string;
+  onSelectTechInGenerator?: (techName: string) => void;
+  onLoadSavedEmailIntoGenerator?: (record: GeneratedEmailRecord) => void;
+}
+
+export const SavedEmailsHistoryTab: React.FC<SavedEmailsHistoryTabProps> = ({
+  activeTechName,
+  onSelectTechInGenerator,
+  onLoadSavedEmailIntoGenerator,
+}) => {
+  const [history, setHistory] = useState<GeneratedEmailRecord[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedTechFilter, setSelectedTechFilter] = useState<string>("all");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedHtmlId, setCopiedHtmlId] = useState<string | null>(null);
+  const [viewingRecord, setViewingRecord] = useState<GeneratedEmailRecord | null>(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [isClearWorkWeekModalOpen, setIsClearWorkWeekModalOpen] = useState(false);
+  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
+
+  // Load history from localStorage
+  const loadHistory = () => {
+    const records = getStoredGeneratedEmails();
+    setHistory(records);
+    return records;
+  };
+
+  useEffect(() => {
+    loadHistory();
+
+    // Listen for storage events across tabs
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_KEY_EMAILS) {
+        loadHistory();
+      }
+    };
+    // Listen for in-app updates dispatched in the same window
+    const handleCustomUpdate = () => {
+      loadHistory();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener(NDS_SAVED_EMAILS_EVENT, handleCustomUpdate);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener(NDS_SAVED_EMAILS_EVENT, handleCustomUpdate);
+    };
+  }, []);
+
+  // Unique list of technicians in history
+  const technicianList = useMemo(() => {
+    const techSet = new Set<string>();
+    history.forEach((h) => techSet.add(h.cleanTechName));
+    return Array.from(techSet).sort();
+  }, [history]);
+
+  // Filtered history list
+  const filteredHistory = useMemo(() => {
+    return history.filter((item) => {
+      if (selectedTechFilter !== "all") {
+        if (item.cleanTechName.toLowerCase() !== selectedTechFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        item.technicianName.toLowerCase().includes(term) ||
+        item.cleanTechName.toLowerCase().includes(term) ||
+        item.workWeek.toLowerCase().includes(term) ||
+        item.subject.toLowerCase().includes(term) ||
+        String(item.version).toLowerCase().includes(term) ||
+        (item.notes && item.notes.toLowerCase().includes(term)) ||
+        item.exportMethod.toLowerCase().includes(term)
+      );
+    });
+  }, [history, selectedTechFilter, searchTerm]);
+
+  // Handle single record deletion
+  const handleDeleteRecord = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const updated = deleteStoredGeneratedEmail(id);
+    setHistory(updated);
+    setFeedbackNotice("Deleted email record from local storage.");
+    setTimeout(() => setFeedbackNotice(null), 3000);
+  };
+
+  // Handle clear all records for filtered tech or all
+  const handleClearHistory = () => {
+    if (selectedTechFilter !== "all") {
+      const updated = clearStoredGeneratedEmailsForTech(selectedTechFilter);
+      setHistory(updated);
+      setFeedbackNotice(`Cleared all stored history for ${selectedTechFilter}.`);
+    } else {
+      try {
+        localStorage.removeItem(LOCAL_STORAGE_KEY_EMAILS);
+        setHistory([]);
+        setFeedbackNotice("Cleared all generated email records.");
+      } catch (err) {
+        console.warn("Failed to clear local storage", err);
+      }
+    }
+    setConfirmClearAll(false);
+    setTimeout(() => setFeedbackNotice(null), 3500);
+  };
+
+  // Handle clear specific selected work weeks
+  const handleClearWorkWeeks = (selectedWeeks: string[], techName?: string) => {
+    const updated = clearStoredGeneratedEmailsForWorkWeeks(selectedWeeks, techName);
+    setHistory(updated);
+    const scopeLabel = techName ? ` for ${techName}` : "";
+    setFeedbackNotice(
+      `Cleared stored records for ${selectedWeeks.length} work week${selectedWeeks.length !== 1 ? "s" : ""}${scopeLabel}.`
+    );
+    setTimeout(() => setFeedbackNotice(null), 3500);
+  };
+
+  // Handle copy subject
+  const handleCopySubject = (id: string, text: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  // Handle copy HTML
+  const handleCopyHtml = async (item: GeneratedEmailRecord, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!item.htmlContent) return;
+    const ok = await copyRichHtmlToClipboard(item.htmlContent, item.plainTextContent || "");
+    if (ok) {
+      setCopiedHtmlId(item.id);
+      setTimeout(() => setCopiedHtmlId(null), 2500);
+    }
+  };
+
+  // Export CSV
+  const handleExportCsv = () => {
+    if (filteredHistory.length === 0) return;
+    const headers = ["Date Generated", "Technician", "Work Week", "Version", "Subject", "Method", "Stops Count", "Notes"];
+    const rows = filteredHistory.map((r) => [
+      `"${r.dateFormatted}"`,
+      `"${r.cleanTechName}"`,
+      `"${r.workWeek}"`,
+      `"${r.version}"`,
+      `"${r.subject.replace(/"/g, '""')}"`,
+      `"${r.exportMethod}"`,
+      `"${r.jobCount || ""}"`,
+      `"${(r.notes || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvText = [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
+    const blob = new Blob([csvText], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `NDS_Saved_Emails_History_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Top Banner & Stats Card */}
+      <div className="bg-white border border-[#CFE0B8] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-[#EDF3E3] text-[#3F4A33] border border-[#CFE0B8] flex items-center justify-center font-bold shadow-2xs">
+            <History className="w-5 h-5 text-[#8AA66B]" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h2 className="text-base font-bold text-[#3F4A33]">Saved Emails History Directory</h2>
+              <span className="bg-[#EDF3E3] text-[#3F4A33] border border-[#CFE0B8] text-xs font-black px-2.5 py-0.5 rounded-full">
+                {history.length} Email{history.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <p className="text-xs text-[#3F4A33]/70">
+              Locally persisted Outlook emails. Click <strong>Display Email</strong> to view any generated schedule anytime.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Export CSV button */}
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={filteredHistory.length === 0}
+            className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-[#EDF3E3] text-[#3F4A33] px-3.5 py-2 rounded-xl border border-[#CFE0B8] shadow-2xs transition cursor-pointer disabled:opacity-50"
+          >
+            <Download className="w-3.5 h-3.5 text-[#8AA66B]" />
+            <span>Export CSV</span>
+          </button>
+
+          {/* Clear by Work Week button */}
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsClearWorkWeekModalOpen(true)}
+              className="flex items-center space-x-1.5 text-xs font-semibold bg-white hover:bg-[#EDF3E3] text-[#3F4A33] px-3.5 py-2 rounded-xl border border-[#CFE0B8] shadow-2xs transition cursor-pointer"
+              title="Select and clear specific work weeks from history"
+            >
+              <Calendar className="w-3.5 h-3.5 text-[#8AA66B]" />
+              <span>Clear by Work Week</span>
+            </button>
+          )}
+
+          {/* Clear History button */}
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirmClearAll) {
+                  handleClearHistory();
+                } else {
+                  setConfirmClearAll(true);
+                  setTimeout(() => setConfirmClearAll(false), 4000);
+                }
+              }}
+              className={`flex items-center space-x-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl border transition cursor-pointer ${
+                confirmClearAll
+                  ? "bg-red-600 text-white border-red-700 animate-pulse"
+                  : "bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+              }`}
+              title="Clear stored email records"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>
+                {confirmClearAll
+                  ? selectedTechFilter !== "all"
+                    ? `Confirm Clear ${selectedTechFilter}?`
+                    : "Confirm Clear All?"
+                  : selectedTechFilter !== "all"
+                  ? `Clear ${selectedTechFilter}`
+                  : "Clear All History"}
+              </span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Feedback Toast */}
+      {feedbackNotice && (
+        <div className="bg-[#3F4A33] text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-md flex items-center justify-between animate-in fade-in duration-150">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-[#CFE0B8]" />
+            <span>{feedbackNotice}</span>
+          </div>
+          <button onClick={() => setFeedbackNotice(null)} className="text-[#CFE0B8] hover:text-white text-xs cursor-pointer">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Search & Filter Toolbar */}
+      <div className="bg-white border border-[#CFE0B8] rounded-2xl p-3.5 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto flex-1">
+          {/* Search Box */}
+          <div className="relative w-full sm:w-80">
+            <Search className="w-3.5 h-3.5 text-[#8AA66B] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by technician, subject, work week, notes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8.5 pr-3 py-1.5 bg-[#FBF7F0] border border-[#CFE0B8] rounded-xl text-xs text-[#3F4A33] placeholder:text-[#3F4A33]/50 focus:outline-hidden focus:ring-2 focus:ring-[#8AA66B]"
+            />
+          </div>
+
+          {/* Technician Filter Dropdown */}
+          <div className="flex items-center space-x-2 w-full sm:w-auto">
+            <Filter className="w-3.5 h-3.5 text-[#8AA66B] shrink-0 hidden sm:inline" />
+            <select
+              value={selectedTechFilter}
+              onChange={(e) => setSelectedTechFilter(e.target.value)}
+              className="bg-white border border-[#CFE0B8] rounded-xl px-3 py-1.5 text-xs font-bold text-[#3F4A33] focus:outline-hidden focus:ring-2 focus:ring-[#8AA66B] cursor-pointer w-full sm:w-auto shadow-2xs"
+            >
+              <option value="all">All Technicians ({history.length} records)</option>
+              {technicianList.map((tech) => {
+                const count = history.filter((h) => h.cleanTechName.toLowerCase() === tech.toLowerCase()).length;
+                return (
+                  <option key={tech} value={tech}>
+                    {tech} ({count})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-[#3F4A33]/70 font-medium shrink-0">
+          Showing <strong className="text-[#3F4A33]">{filteredHistory.length}</strong> of{" "}
+          <strong className="text-[#3F4A33]">{history.length}</strong> stored emails
+        </div>
+      </div>
+
+      {/* History Grid / List */}
+      {filteredHistory.length === 0 ? (
+        <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center space-y-3 shadow-xs">
+          <History className="w-12 h-12 text-zinc-300 mx-auto" />
+          <h3 className="text-sm font-semibold text-zinc-900">No Stored Email Records Found</h3>
+          <p className="text-xs text-zinc-500 max-w-md mx-auto">
+            {searchTerm || selectedTechFilter !== "all"
+              ? "No saved emails match your current filter criteria. Try clearing the search or switching technician."
+              : "Whenever you generate, copy, download, or click Save to History on an Outlook schedule, it will appear here so you can display and re-use it anytime."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredHistory.map((record) => {
+            const isCurrentTech =
+              activeTechName && cleanTechnicianName(activeTechName).toLowerCase() === record.cleanTechName.toLowerCase();
+
+            return (
+              <div
+                key={record.id}
+                className="bg-white border border-[#CFE0B8] rounded-2xl p-4 sm:p-5 shadow-xs hover:shadow-sm hover:border-[#8AA66B] transition flex flex-col space-y-3 group"
+              >
+                {/* Card Top Row: Version Badge, Tech, Work Week, Date, and Quick Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#CFE0B8]/60 pb-3">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                    {/* Version Badge */}
+                    <span
+                      className={`font-black px-2.5 py-0.5 rounded-lg text-xs border ${
+                        String(record.version).toLowerCase().includes("update") ||
+                        (String(record.version).toLowerCase().includes("v") && !String(record.version).toLowerCase().includes("v0"))
+                          ? "bg-[#EDF3E3] text-[#3F4A33] border-[#8AA66B]"
+                          : "bg-[#FBF7F0] text-[#3F4A33] border-[#CFE0B8]"
+                      }`}
+                    >
+                      {record.version}
+                    </span>
+
+                    {/* Technician Name */}
+                    <div className="flex items-center space-x-1 font-bold text-[#3F4A33] text-xs">
+                      <User className="w-3.5 h-3.5 text-[#8AA66B]" />
+                      <span>{record.cleanTechName}</span>
+                    </div>
+
+                    <span className="text-[#CFE0B8] text-xs">•</span>
+
+                    {/* Work Week */}
+                    <div className="flex items-center space-x-1 text-[#3F4A33]/70 text-xs">
+                      <Calendar className="w-3.5 h-3.5 text-[#8AA66B]" />
+                      <span>{record.workWeek}</span>
+                    </div>
+
+                    {isCurrentTech && (
+                      <span className="bg-[#8AA66B] text-white border border-[#8AA66B] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-2xs">
+                        Active Tech
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center space-x-2 text-xs shrink-0">
+                    <span className="text-[11px] text-[#3F4A33]/60 font-mono">{record.dateFormatted}</span>
+                    <span className="bg-[#EDF3E3] text-[#3F4A33] px-2.5 py-0.5 rounded-lg text-[10px] font-bold border border-[#CFE0B8]">
+                      {record.exportMethod}
+                    </span>
+                    {record.jobCount !== undefined && (
+                      <span className="bg-[#FBF7F0] text-[#3F4A33] px-2 py-0.5 rounded-lg text-[10px] font-semibold border border-[#CFE0B8]">
+                        {record.jobCount} stops
+                      </span>
+                    )}
+
+                    {/* Delete Individual Record */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteRecord(record.id, e)}
+                      className="text-[#3F4A33]/50 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition cursor-pointer"
+                      title="Delete this stored email record from history"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card Subject & Notes */}
+                <div className="text-xs space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-[#3F4A33]/60 mr-1.5">Subject:</span>
+                      <span className="font-semibold text-[#3F4A33] select-all">{record.subject}</span>
+                    </div>
+                  </div>
+
+                  {record.notes && (
+                    <div className="bg-[#EDF3E3] border border-[#CFE0B8] rounded-xl px-3 py-2 text-[11px] text-[#3F4A33] font-medium">
+                      <span className="font-bold text-[#8AA66B]">Update Notes:</span> {record.notes}
+                    </div>
+                  )}
+
+                  {record.additionalNotes && record.additionalNotes.length > 0 && (
+                    <div className="flex items-center space-x-1.5 flex-wrap text-[10px] pt-1">
+                      <span className="font-bold text-[#3F4A33]">Additional Notes:</span>
+                      {record.additionalNotes.map((n) => (
+                        <span key={n.id} className="bg-[#EDF3E3] text-[#3F4A33] font-semibold px-2 py-0.5 rounded-lg border border-[#CFE0B8]">
+                          {n.day}: {n.text.slice(0, 30)}...
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {record.brandingConfig?.overlappingSchedulesEnabled && (
+                    <div className="flex items-center space-x-1.5 text-[10px] pt-0.5">
+                      <span className="bg-[#8AA66B]/15 text-[#3F4A33] font-bold px-2 py-0.5 rounded-full border border-[#8AA66B]/30">
+                        Overlapping Schedule Enabled
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Card Actions Row: Display Email Button + Copy HTML + Copy Subject */}
+                <div className="pt-2 border-t border-[#CFE0B8]/60 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    {/* DISPLAY EMAIL BUTTON (Prominent) */}
+                    <button
+                      type="button"
+                      onClick={() => setViewingRecord(record)}
+                      className="inline-flex items-center space-x-1.5 bg-[#8AA66B] hover:bg-[#7a965c] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                      title="Display the exact stored email with styled layout and preview options"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Display Email</span>
+                    </button>
+
+                    {/* Copy HTML Button */}
+                    {record.htmlContent && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyHtml(record, e)}
+                        className="inline-flex items-center space-x-1.5 bg-[#EDF3E3] hover:bg-[#CFE0B8] text-[#3F4A33] px-3.5 py-2 rounded-xl text-xs font-semibold border border-[#CFE0B8] shadow-2xs transition cursor-pointer"
+                        title="Copy styled HTML to paste directly into Outlook"
+                      >
+                        {copiedHtmlId === record.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-[#8AA66B]" />
+                            <span className="text-[#8AA66B] font-bold">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-[#8AA66B]" />
+                            <span>Copy HTML</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Copy Subject Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleCopySubject(record.id, record.subject, e)}
+                      className="inline-flex items-center space-x-1 text-[#3F4A33] hover:bg-[#EDF3E3] bg-white px-3 py-2 rounded-xl text-xs font-semibold border border-[#CFE0B8] transition cursor-pointer shadow-2xs"
+                    >
+                      {copiedId === record.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-[#8AA66B]" />
+                          <span className="text-[#8AA66B] font-bold">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3 text-[#8AA66B]" />
+                          <span>Subject</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Switch to Tech in Generator */}
+                  {onSelectTechInGenerator && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectTechInGenerator(record.cleanTechName)}
+                      className="text-[11px] font-bold text-[#3F4A33] hover:text-[#8AA66B] flex items-center space-x-1 cursor-pointer transition"
+                    >
+                      <span>Switch to {record.cleanTechName} in Generator</span>
+                      <ArrowRight className="w-3 h-3 text-[#8AA66B]" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* High-Fidelity Stored Email Display Modal */}
+      {viewingRecord && (
+        <EmailViewerModal
+          isOpen={Boolean(viewingRecord)}
+          onClose={() => setViewingRecord(null)}
+          record={viewingRecord}
+          onLoadIntoGenerator={onLoadSavedEmailIntoGenerator}
+        />
+      )}
+
+      {/* Clear Specific Work Weeks Modal */}
+      <ClearWorkWeekModal
+        isOpen={isClearWorkWeekModalOpen}
+        onClose={() => setIsClearWorkWeekModalOpen(false)}
+        history={history}
+        selectedTechFilter={selectedTechFilter}
+        onConfirmDelete={handleClearWorkWeeks}
+      />
+    </div>
+  );
+};

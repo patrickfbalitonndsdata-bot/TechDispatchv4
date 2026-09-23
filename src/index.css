@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --color-palette-ivory: #FBF7F0;
+  --color-palette-cream: #EDF3E3;
+  --color-palette-sage: #CFE0B8;
+  --color-palette-moss: #8AA66B;
+  --color-palette-forest: #3F4A33;
+}
+
+:root {
+  --palette-ivory: #FBF7F0;
+  --palette-cream: #EDF3E3;
+  --palette-sage: #CFE0B8;
+  --palette-moss: #8AA66B;
+  --palette-forest: #3F4A33;
+}
+
+body {
+  background-color: #FBF7F0;
+  color: #3F4A33;
+}
+
+/* Custom Keyframe Animations for Transparent Label Buttons */
+@keyframes label-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes label-pulse-border {
+  0%, 100% { border-color: rgba(207, 224, 184, 0.4); }
+  50% { border-color: rgba(138, 166, 107, 0.9); box-shadow: 0 0 12px rgba(138, 166, 107, 0.25); }
+}
+
+/* Global Transparent Label-Button Behavior */
+button {
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Label Illusion utility class */
+.btn-label-ghost {
+  background-color: transparent !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-label-ghost:hover {
+  transform: translateY(-2px);
+}
+
+.btn-label-ghost:active {
+  transform: translateY(0);
+}
+
+/* Underline reveal animation for label buttons */
+.btn-label-underline {
+  position: relative;
+  background-color: transparent !important;
+}
+
+.btn-label-underline::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0%;
+  height: 2px;
+  background-color: #8AA66B;
+  transition: all 0.25s ease-out;
+  transform: translateX(-50%);
+  border-radius: 9999px;
+}
+
+.btn-label-underline:hover::after {
+  width: 80%;
+}
+
+
