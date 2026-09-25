@@ -140,11 +140,26 @@ const FIELD_SYNONYMS: Record<keyof ColumnMapping, string[]> = {
     "schedulenote",
     "schedule_notes",
     "schedule_note",
+    "schedule notes (from locations)",
+    "schedule notes (from location)",
+    "schedulenotesfromlocations",
+    "schedulenotesfromlocation",
+    "location notes (from locations)",
+    "location notes (from location)",
+    "locationnotesfromlocations",
+    "locationnotesfromlocation",
+    "schedule notes (location notes)",
+    "schedulenoteslocationnotes",
+    "location specific notes",
+    "locationspecificnotes",
     "location notes",
     "location note",
     "location_notes",
+    "location_note",
     "field notes",
+    "field note",
     "field_notes",
+    "field_note",
     "notes",
   ],
   scheduleDetails: [
@@ -556,9 +571,16 @@ export function parseCsvData(csvText: string, customMapping?: Partial<ColumnMapp
       row[mapping.scheduleNotes] ||
       row["Schedule Notes"] ||
       row["Schedule Note"] ||
+      row["Schedule Notes (from Locations)"] ||
+      row["Schedule Notes (from Location)"] ||
+      row["Location Notes (from Locations)"] ||
+      row["Location Notes (from Location)"] ||
+      row["Schedule Notes (Location Notes)"] ||
       row["Location Notes"] ||
       row["Location Note"] ||
       row["Field Notes"] ||
+      row["Field Note"] ||
+      row["Location Specific Notes"] ||
       ""
     ).trim();
 
