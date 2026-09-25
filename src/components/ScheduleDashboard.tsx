@@ -279,6 +279,16 @@ export const ScheduleDashboard: React.FC<ScheduleDashboardProps> = ({
                         📝 {order.specialInstructions}
                       </div>
                     )}
+                    {order.scheduleNotes && (
+                      <div className="text-[11px] text-rose-900 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 inline-block font-semibold ml-1">
+                        📌 {order.scheduleNotes}
+                      </div>
+                    )}
+                    {order.schedulingTeamNotes && (
+                      <div className="text-[11px] text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 inline-block font-semibold ml-1">
+                        📋 {order.schedulingTeamNotes}
+                      </div>
+                    )}
                   </div>
 
                   {/* Right Column: Customer & Location */}
