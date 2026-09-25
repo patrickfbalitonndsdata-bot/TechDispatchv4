@@ -223,8 +223,10 @@ export function extractAllOrderNotes(ord: WorkOrder): string {
 }
 
 /**
- * Strips unnecessary notes such as Schedule Details, duration/collection windows,
- * service task info, redundant joined camera/location specs, and REDO markers.
+ * Strips unnecessary notes such as duplicate Schedule Details,
+ * duplicate schedulingTeamNotes, and REDO markers (handled by bullet badge).
+ * Preserves the full, unabridged text of the schedule note (including numbers,
+ * location IDs, units, instructions, and descriptions).
  */
 export function cleanExtraNotes(
   text: string,
@@ -236,55 +238,50 @@ export function cleanExtraNotes(
   if (!clean) return "";
 
   // If identical to scheduleDetails or schedulingTeamNotes, eliminate completely
-  if (scheduleDetails && clean.toLowerCase() === scheduleDetails.trim().toLowerCase()) return "";
-  if (schedulingTeamNotes && clean.toLowerCase() === schedulingTeamNotes.trim().toLowerCase()) return "";
+  const lower = clean.toLowerCase();
+  const unparenLower = lower.replace(/^\(+|\)+$/g, "").trim();
 
-  // Strip explicit scheduleDetails substring if embedded
-  if (scheduleDetails && scheduleDetails.trim()) {
-    const esc = scheduleDetails.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    clean = clean.replace(new RegExp(esc, "gi"), " ");
+  if (scheduleDetails) {
+    const sdLower = scheduleDetails.trim().toLowerCase();
+    const sdUnparen = sdLower.replace(/^\(+|\)+$/g, "").trim();
+    if (lower === sdLower || unparenLower === sdUnparen) return "";
   }
 
-  // Strip scheduling details and time/duration patterns e.g. "2 Days: Mon, Tue, Wed, Thu = 00:00-24:00", "24 Hours: ...", "Service task as assigned"
-  clean = clean.replace(/["'“”‘’]?\b\d+\s*Days?[:\s][^()"'\n]*?(?:=\s*\d{1,2}:\d{2}[-\s\d:]*)?["'“”‘’]?/gi, " ");
-  clean = clean.replace(/["'“”‘’]?\b\d+\s*Hours?[:\s][^()"'\n]*?(?:=\s*\d{1,2}:\d{2}[-\s\d:]*)?["'“”‘’]?/gi, " ");
-  clean = clean.replace(/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:\s*,\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun))*\s*=\s*\d{1,2}:\d{2}[-\s\d:]*/gi, " ");
-  clean = clean.replace(/\b\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2}\b/gi, " ");
-  clean = clean.replace(/Service\s+task\s+as\s+assigned/gi, " ");
-  clean = clean.replace(/Schedule\s+details?/gi, " ");
-  clean = clean.replace(/\b(?:Duration|Time Duration)(?:\s*\(.*?\))?[:\s][^\n,;)]*/gi, " ");
-  clean = clean.replace(/\b\d+-day\s+collection\b/gi, " ");
-  clean = clean.replace(/\bWork\s*Week\s*\d+\b/gi, " ");
-  clean = clean.replace(/\bWW\s*#?\s*\d+\b/gi, " ");
+  if (schedulingTeamNotes) {
+    const stnLower = schedulingTeamNotes.trim().toLowerCase();
+    const stnUnparen = stnLower.replace(/^\(+|\)+$/g, "").trim();
+    if (lower === stnLower || unparenLower === stnUnparen) return "";
+  }
 
-  // Strip redundant camera / unit phrasing e.g. "1 camera for 6893, 6894", "6893, 6894 1 camera", "1 camera", "1 machine"
-  clean = clean.replace(/(?:(?:\d+\s*(?:cameras?|machines?|units?|cams?)\s*(?:for|on|at|between|covering|across|of)?\s*(?:locs?|locations?|loc#?)?[:\s\-–—(]*)?(?:\d{2,6}\s*(?:,|\/|and|&|\s)\s*)+\d{2,6}\)?)/gi, " ");
-  clean = clean.replace(/(?:(?:\d{2,6}\s*(?:,|\/|and|&|\s)\s*)+\d{2,6}\s*[-:,]?\s*\(?\d+\s*(?:cameras?|machines?|units?|cams?)\)?)/gi, " ");
-  clean = clean.replace(/\b\d+\s*(?:cameras?|machines?|units?|cams?)\b/gi, " ");
-  clean = clean.replace(/\b(?:locs?|locations?|loc#?)\s*\d{2,6}\b/gi, " ");
-  clean = clean.replace(/\b\d{3,5}\b/g, " ");
+  // Strip City of Dallas list markers (these belong in the headline/team notes, not individual location bullets)
+  clean = clean.replace(/\(?\s*City\s+of\s+Dallas\s*[-–—]?\s*List\s*#?\s*\d+\s*\)?/gi, " ");
 
-  // Strip REDO tag (handled separately on the bullet)
+  // Strip REDO tag (handled separately as bold red text on the bullet)
   clean = clean.replace(/\bredo\b/gi, " ");
 
-  // Strip City of Dallas list markers
-  clean = clean.replace(/City\s+of\s+Dallas.*?List\s*#?\s*\d+/gi, " ");
-
-  // Clean surrounding punctuation, whitespace, and leftover quotes/brackets
-  clean = clean.replace(/["'“”‘’`]+/g, " ");
-  clean = clean.replace(/^[,\s()\-–—:;[\]]+/, "").replace(/[,\s()\-–—:;[\]]+$/, "").trim();
+  // Clean surrounding whitespace, quotes, and punctuation
+  clean = clean.replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, "").trim();
+  clean = clean.replace(/^[,\s\-–—:;]+/, "").replace(/[,\s\-–—:;]+$/, "").trim();
   clean = clean.replace(/\s+/g, " ").trim();
 
   // If the result is a placeholder or meaningless, return empty
+  const cleanLower = clean.toLowerCase().replace(/^[()]+|[()]+$/g, "").trim();
   if (
-    !clean ||
-    ["none", "no", "n/a", "na", "null", "undefined", "()", "( )", "task", "as assigned"].includes(clean.toLowerCase()) ||
+    !cleanLower ||
+    ["none", "no", "n/a", "na", "null", "undefined", "task", "as assigned"].includes(cleanLower) ||
     /^[,\s()\-–—:;[\]]+$/.test(clean)
   ) {
     return "";
   }
 
-  return clean.startsWith("(") && clean.endsWith(")") ? clean : `(${clean})`;
+  // Ensure clean is enclosed in parentheses
+  if (clean.startsWith("(") && clean.endsWith(")")) {
+    const inner = clean.slice(1, -1).trim();
+    if (!inner || /^[,\s()\-–—:;[\]]+$/.test(inner)) return "";
+    return `(${inner})`;
+  }
+
+  return `(${clean})`;
 }
 
 /**
@@ -645,8 +642,23 @@ export function formatBulletItem(order: WorkOrder): FormattedBulletItem {
   const unitText = parts.join(" ");
 
   let notesText = "";
-  if (order.scheduleNotes && order.scheduleNotes.trim() !== "") {
-    const trimmedN = order.scheduleNotes.trim();
+  const rawNotesVal = (
+    order.scheduleNotes ||
+    order.rawRowData?.["Schedule Notes"] ||
+    order.rawRowData?.["Schedule Notes (from Locations)"] ||
+    order.rawRowData?.["Schedule Notes (from Location)"] ||
+    order.rawRowData?.["Location Notes (from Locations)"] ||
+    order.rawRowData?.["Location Notes (from Location)"] ||
+    order.rawRowData?.["Schedule Notes (Location Notes)"] ||
+    order.rawRowData?.["Location Notes"] ||
+    order.rawRowData?.["Location Note"] ||
+    order.rawRowData?.["Field Notes"] ||
+    order.rawRowData?.["Location Specific Notes"] ||
+    ""
+  ).trim();
+
+  if (rawNotesVal) {
+    const trimmedN = rawNotesVal;
     if (!["none", "no", "n/a", "na", "null", "undefined"].includes(trimmedN.toLowerCase())) {
       // Ensure we don't display Scheduling Team Notes (or City of Dallas list keywords) on location bullets
       const isCod = /\(?\s*City\s+of\s+Dallas\s*[-–—]?\s*List\s*#?\s*\d+\s*\)?/i.test(trimmedN);
@@ -660,9 +672,13 @@ export function formatBulletItem(order: WorkOrder): FormattedBulletItem {
       const isPureJoinedNote = Boolean(parsedJoined && !parsedJoined.extraNotes);
 
       if (!isCod && !isSameAsTeamNotes && !isPureJoinedNote) {
-        const cleaned = cleanExtraNotes(trimmedN, order.scheduleDetails, order.schedulingTeamNotes);
-        if (cleaned) {
-          notesText = cleaned;
+        if (parsedJoined && parsedJoined.extraNotes) {
+          notesText = parsedJoined.extraNotes;
+        } else {
+          const cleaned = cleanExtraNotes(trimmedN, order.scheduleDetails, order.schedulingTeamNotes);
+          if (cleaned) {
+            notesText = cleaned;
+          }
         }
       }
     }
